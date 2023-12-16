@@ -1,0 +1,69 @@
+create
+    definer = root@`%` procedure AddNewOrder(IN p_CustomerID int, IN p_ProductID int, IN p_Quantity int,
+                                             IN p_OrderDate date)
+BEGIN
+    -- Declare variables for order-related data
+    DECLARE new_order_id INT;
+    DECLARE v_UnitPrice DECIMAL(10, 2);
+    DECLARE v_ShipDate DATE;
+    DECLARE v_ShipAddress VARCHAR(255);
+    DECLARE v_ShipCity VARCHAR(255);
+    DECLARE v_ShipPostalCode VARCHAR(20);
+    DECLARE v_ShipCountry VARCHAR(50);
+
+    -- Start a new transaction
+    START TRANSACTION;
+
+    -- Retrieve customer information
+    SELECT
+        c.Address,
+        c.City,
+        c.PostalCode,
+        c.Country
+    INTO
+        v_ShipAddress,
+        v_ShipCity,
+        v_ShipPostalCode,
+        v_ShipCountry
+    FROM Customers c
+    WHERE c.CustomerID = p_CustomerID;
+
+    -- Calculate ShipDate (approximately 2 days after OrderDate)
+    SET v_ShipDate = DATE_ADD(p_OrderDate, INTERVAL 2 DAY);
+
+    -- Insert into the Orders table
+    INSERT INTO Orders (CustomerID, OrderDate, ShipDate, ShipAddress, ShipCity, ShipPostalCode, ShipCountry)
+    VALUES (p_CustomerID, p_OrderDate, v_ShipDate, v_ShipAddress, v_ShipCity, v_ShipPostalCode, v_ShipCountry);
+
+    -- Get the last inserted order ID
+    SET new_order_id = LAST_INSERT_ID();
+
+    -- Retrieve product information
+    SELECT
+        p.UnitPrice
+    INTO
+        v_UnitPrice
+    FROM Products p
+    WHERE p.ProductID = p_ProductID;
+
+    -- Insert into the OrderDetails table
+    INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice)
+    VALUES (new_order_id, p_ProductID, p_Quantity, v_UnitPrice);
+
+    -- Update stock quantity
+    CALL UpdateStock(p_ProductID, p_Quantity);
+
+    -- Commit the transaction
+    COMMIT;
+END;
+
+
+
+create
+    definer = root@`%` procedure UpdateStock(IN p_ProductID int, IN p_Quantity int)
+BEGIN
+    UPDATE Products
+    SET UnitsInStock = UnitsInStock - p_Quantity
+    WHERE ProductID = p_ProductID;
+END;
+
