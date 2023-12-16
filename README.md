@@ -11,6 +11,7 @@ e. Assignment 2
 2) A list of all source files submitted for the assignment
 
 main.py
+Screenshots of database and stored procedures
 
 4) A description of any known compile or runtime errors, code limitations, or deviations
 from the assignment specification (if applicable)
